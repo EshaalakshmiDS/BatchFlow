@@ -1,4 +1,5 @@
 import csv
+import time
 import threading
 from datetime import datetime, timezone
 from app.database import SessionLocal
@@ -8,6 +9,7 @@ from app.core.validators import validate_row
 from app.config import settings
 
 BATCH_SIZE = settings.BATCH_SIZE
+BATCH_SLEEP_MS = settings.BATCH_SLEEP_MS
 
 
 def process_job(job_id: str, file_path: str):
@@ -66,6 +68,8 @@ def _run_processing(job_id: str, file_path: str):
                     db.bulk_save_objects(batch)
                     _update_job_progress(db, job_id, total, processed, valid, invalid)
                     batch = []
+                    if BATCH_SLEEP_MS > 0:
+                        time.sleep(BATCH_SLEEP_MS / 1000)
 
             # Flush remaining rows
             if batch:
