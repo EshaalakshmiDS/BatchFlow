@@ -1,11 +1,14 @@
 import os
 import shutil
 import uuid
+from datetime import datetime, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.job import Job
+from app.models.transaction import Transaction
 from app.services.batch_worker import process_job
 from app.schemas.job import JobResponse
 from app.config import settings
@@ -39,6 +42,31 @@ def start_job(job_id: UUID, db: Session = Depends(get_db)):
             status_code=409,
             detail=f"Job cannot be started: current status is '{job.status}'"
         )
+
+    # Concurrency control — cap simultaneous running jobs
+    running_count = db.scalar(
+        select(func.count()).select_from(Job).where(Job.status == "running")
+    )
+    if running_count >= settings.MAX_CONCURRENT_JOBS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many running jobs ({running_count}/{settings.MAX_CONCURRENT_JOBS}). Wait for one to complete."
+        )
+
+    # Retry — clean up partial rows and reset counters from the previous failed run
+    if job.status == "failed":
+        db.execute(
+            Transaction.__table__.delete().where(Transaction.job_id == job_id)
+        )
+        job.processed_records = 0
+        job.valid_records = 0
+        job.invalid_records = 0
+        job.progress_percent = 0
+        job.error_message = None
+        job.status = "pending"
+        job.updated_at = datetime.now(timezone.utc)
+        db.commit()
+
     process_job(str(job_id), job.file_path)
     return job
 

@@ -52,9 +52,11 @@ def validate_row(row: dict, seen_transaction_ids: set[str]) -> ValidationResult:
     if not UUID_PATTERN.match(user_id):
         result.fail("user_id must be a valid UUID/GUID")
 
-    # amount: must be numeric
+    # amount: must be numeric and finite (rejects NaN, Infinity)
     try:
         amount = Decimal(amount_raw)
+        if not amount.is_finite():
+            raise InvalidOperation
         result.amount = amount
         # Suspicious flags (valid records, just flagged)
         if amount < 0 or amount > 50_000:

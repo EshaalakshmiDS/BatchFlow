@@ -4,7 +4,11 @@
       "Bash(source venv/Scripts/activate)",
       "Bash(python -c \":*)",
       "Bash(JOB_ID=\"3aa61326-5b49-447e-91d6-e70cce519516\" curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\" http://localhost:8002/jobs/$JOB_ID)",
-      "Bash(tee /tmp/get_job.txt echo \"\" grep -v HTTP_STATUS /tmp/get_job.txt)"
+      "Bash(tee /tmp/get_job.txt echo \"\" grep -v HTTP_STATUS /tmp/get_job.txt)",
+      "Bash(npm create:*)",
+      "Bash(npx create-vite@latest . --template react --overwrite)",
+      "Bash(npm install:*)",
+      "Bash(curl -s http://localhost:5173/src/api/client.js)"
     ]
   }
 }
