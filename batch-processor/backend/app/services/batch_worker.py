@@ -14,7 +14,6 @@ BATCH_SLEEP_MS = settings.BATCH_SLEEP_MS
 
 
 def process_job(job_id: str, file_path: str):
-    """Entry point called in a new Thread."""
     thread = threading.Thread(
         target=_run_processing,
         args=(job_id, file_path),
@@ -27,11 +26,9 @@ def process_job(job_id: str, file_path: str):
 def _run_processing(job_id: str, file_path: str):
     db = SessionLocal()
     try:
-        # Count total rows first (for accurate progress)
         with open(file_path, "r") as f:
             total = sum(1 for _ in csv.DictReader(f))
 
-        # Mark job as running
         job = db.get(Job, job_id)
         job.status = "running"
         job.total_records = total
@@ -48,9 +45,8 @@ def _run_processing(job_id: str, file_path: str):
             for row in reader:
                 result = validate_row(row, seen_txn_ids)
 
-                # Duplicate rows share the same transaction_id — replace with a
-                # generated UUID so the unique (job_id, transaction_id) constraint
-                # is not violated while still storing the invalid row.
+                # Duplicate rows get a generated UUID as storage key so the
+                # unique (job_id, transaction_id) constraint isn't violated.
                 raw_txn_id = row.get("transaction_id", "").strip()
                 storage_txn_id = raw_txn_id if raw_txn_id not in stored_txn_ids else str(uuid.uuid4())
                 stored_txn_ids.add(storage_txn_id)
@@ -72,7 +68,6 @@ def _run_processing(job_id: str, file_path: str):
                 else:
                     invalid += 1
 
-                # Commit every BATCH_SIZE rows
                 if len(batch) >= BATCH_SIZE:
                     db.bulk_save_objects(batch)
                     _update_job_progress(db, job_id, total, processed, valid, invalid)
@@ -80,12 +75,10 @@ def _run_processing(job_id: str, file_path: str):
                     if BATCH_SLEEP_MS > 0:
                         time.sleep(BATCH_SLEEP_MS / 1000)
 
-            # Flush remaining rows
             if batch:
                 db.bulk_save_objects(batch)
                 _update_job_progress(db, job_id, total, processed, valid, invalid)
 
-        # Mark complete
         job = db.get(Job, job_id)
         job.status = "completed"
         job.updated_at = datetime.now(timezone.utc)
