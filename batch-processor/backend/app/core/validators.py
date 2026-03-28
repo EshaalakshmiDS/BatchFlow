@@ -31,6 +31,10 @@ def validate_row(row: dict, seen_transaction_ids: set[str]) -> ValidationResult:
             result.fail(f"Missing required field: {f}")
 
     if not result.is_valid:
+        # Still track transaction_id so a later valid row with the same id is caught as duplicate
+        txn_id_early = row.get("transaction_id", "").strip()
+        if txn_id_early:
+            seen_transaction_ids.add(txn_id_early)
         return result  # Skip format checks if fields missing
 
     txn_id = row["transaction_id"].strip()
@@ -55,7 +59,7 @@ def validate_row(row: dict, seen_transaction_ids: set[str]) -> ValidationResult:
     # amount: must be numeric and finite (rejects NaN, Infinity)
     try:
         amount = Decimal(amount_raw)
-        if not amount.is_finite():
+        if not amount.is_finite() or abs(amount) >= Decimal('1E13'):
             raise InvalidOperation
         result.amount = amount
         # Suspicious flags (valid records, just flagged)
