@@ -23,24 +23,53 @@ export default function UploadForm({ onJobStarted }) {
   };
 
   return (
-    <div className="max-w-lg mx-auto mt-16 p-8 border rounded-xl shadow-sm">
-      <h1 className="text-2xl font-semibold mb-6">Upload Transactions CSV</h1>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="file"
-          accept=".csv"
-          onChange={(e) => setFile(e.target.files[0])}
-          className="block w-full mb-4 text-sm"
-        />
-        {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
-        <button
-          type="submit"
-          disabled={!file || loading}
-          className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg disabled:opacity-50"
-        >
-          {loading ? "Uploading…" : "Upload & Process"}
-        </button>
-      </form>
+    <div className="flex flex-col items-center justify-center min-h-[70vh]">
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-md p-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-800">Upload Transactions</h1>
+          <p className="text-slate-400 text-sm mt-1">Select a CSV file to begin batch processing</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className={`flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+            file ? "border-blue-400 bg-blue-50" : "border-slate-300 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/50"
+          }`}>
+            <div className="text-center px-4">
+              {file ? (
+                <>
+                  <p className="text-blue-600 font-medium text-sm truncate max-w-xs">{file.name}</p>
+                  <p className="text-slate-400 text-xs mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-slate-500 text-sm">Drop your CSV here or <span className="text-blue-500">browse</span></p>
+                  <p className="text-slate-400 text-xs mt-1">.csv files only</p>
+                </>
+              )}
+            </div>
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+          </label>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={!file || loading}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-colors"
+          >
+            {loading ? "Uploading…" : "Upload & Process"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

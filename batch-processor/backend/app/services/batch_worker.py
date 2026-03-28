@@ -1,5 +1,6 @@
 import csv
 import time
+import uuid
 import threading
 from datetime import datetime, timezone
 from app.database import SessionLocal
@@ -38,6 +39,7 @@ def _run_processing(job_id: str, file_path: str):
         db.commit()
 
         seen_txn_ids: set[str] = set()
+        stored_txn_ids: set[str] = set()
         batch: list[Transaction] = []
         processed = valid = invalid = 0
 
@@ -46,11 +48,18 @@ def _run_processing(job_id: str, file_path: str):
             for row in reader:
                 result = validate_row(row, seen_txn_ids)
 
+                # Duplicate rows share the same transaction_id — replace with a
+                # generated UUID so the unique (job_id, transaction_id) constraint
+                # is not violated while still storing the invalid row.
+                raw_txn_id = row.get("transaction_id", "").strip()
+                storage_txn_id = raw_txn_id if raw_txn_id not in stored_txn_ids else str(uuid.uuid4())
+                stored_txn_ids.add(storage_txn_id)
+
                 txn = Transaction(
                     job_id=job_id,
-                    transaction_id=row.get("transaction_id", "").strip(),
+                    transaction_id=storage_txn_id,
                     user_id=row.get("user_id", "").strip(),
-                    amount=float(result.amount) if result.amount is not None else None,
+                    amount=result.amount if result.amount is not None else None,
                     timestamp=result.timestamp,
                     is_valid=result.is_valid,
                     is_suspicious=result.is_suspicious,
