@@ -38,6 +38,19 @@ Built with FastAPI + PostgreSQL + SQLAlchemy + React 18 + Tailwind CSS.
 The backend is split into clear layers — routers handle HTTP only, services handle processing logic, `core/validators.py` is pure Python with no framework imports. The worker thread is completely isolated from the request lifecycle.
 
 ---
+### How a Job Flows Through the System
+
+  When a CSV is uploaded, the file is saved to disk and a Job row is created with status pending. The upload and start are intentionally two separate API calls — this gives the client control over when processing begins, and keeps the upload endpoint fast and simple.
+
+  When start is called, the router does a quick sanity check — is the job already running? are we at the concurrency limit? — then spawns a daemon thread and returns immediately. The HTTP response doesn't wait for processing to finish.
+
+  The worker thread opens its own database session (sessions aren't thread-safe), counts the total rows   for progress calculation, then streams through the CSV row by row. Every 100 rows it bulk-inserts the batch and commits — so progress is real and queryable mid-job, not just a number that jumps to 100% at the end.
+
+  On the frontend, a useJobPoller hook polls GET /jobs/{id} every 2 seconds and updates the progress bar. When the status hits completed, the hook stops polling and the results table loads. The progress bar animates smoothly using CSS transitions between poll ticks — so even with a 2-second interval it doesn't feel janky.
+
+  If a job fails mid-file, the error is stored on the job row and the worker exits cleanly. The user can retry — which clears the partial rows and reruns from scratch.
+
+---
 
 ## Project Structure
 
