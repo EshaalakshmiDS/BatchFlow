@@ -17,8 +17,13 @@ if config.config_file_name is not None:
 # Import all models so Base.metadata is fully populated
 from app.database import Base
 from app.models import job, transaction  # noqa: F401
+from app.config import settings
 
 target_metadata = Base.metadata
+
+# Override alembic.ini URL with the value from .env so the ini file
+# never needs to contain real credentials.
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

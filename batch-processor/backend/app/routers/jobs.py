@@ -43,7 +43,7 @@ def start_job(job_id: UUID, db: Session = Depends(get_db)):
             detail=f"Job cannot be started: current status is '{job.status}'"
         )
 
-    # Concurrency control — cap simultaneous running jobs
+    # cap simultaneous running jobs
     running_count = db.scalar(
         select(func.count()).select_from(Job).where(Job.status == "running")
     )
@@ -53,7 +53,7 @@ def start_job(job_id: UUID, db: Session = Depends(get_db)):
             detail=f"Too many running jobs ({running_count}/{settings.MAX_CONCURRENT_JOBS}). Wait for one to complete."
         )
 
-    # Retry — clean up partial rows and reset counters from the previous failed run
+    # retry: clear partial data from previous failed run
     if job.status == "failed":
         db.execute(
             Transaction.__table__.delete().where(Transaction.job_id == job_id)
